@@ -797,6 +797,47 @@
       const isImageOnly = cells.length > 0 && hasImage && allTextless;
       if(isImageOnly) table.classList.add('img-only-table');
     });
+    // Belt-and-suspenders on the box behind the Canon/Legends badges
+    // specifically: rather than trust that the .img-only-table class
+    // above matched the actual right element (guessing CSS selectors
+    // blind hasn't worked reliably), walk up from the badge images
+    // themselves and forcibly strip any background/border/padding on
+    // every ancestor up to the table. Inline styles set with
+    // "important" here beat everything — ours or Fandom's — so this
+    // works regardless of what the wrapping elements actually are.
+    holder.querySelectorAll('img[alt*="Canon version" i], img[alt*="Legends version" i], img[title*="Canon version" i], img[title*="Legends version" i]').forEach(img => {
+      let el = img;
+      for(let i = 0; i < 6 && el && el !== holder; i++){
+        el.style.setProperty('background', 'none', 'important');
+        el.style.setProperty('background-color', 'transparent', 'important');
+        el.style.setProperty('border', 'none', 'important');
+        el.style.setProperty('box-shadow', 'none', 'important');
+        el.style.setProperty('padding', '0', 'important');
+        el = el.parentElement;
+      }
+    });
+    // Same approach for the dead space under in-article thumbnails: walk
+    // up from every thumb image and strip any inline height/padding
+    // that might be reserving space for it (Fandom's lazy-load guard
+    // against layout shift, sized before the real image swaps in).
+    holder.querySelectorAll('figure img, .thumb img').forEach(img => {
+      let el = img.parentElement;
+      for(let i = 0; i < 4 && el && el !== holder; i++){
+        const isOuterBox = el.tagName === 'FIGURE' || el.classList.contains('thumb');
+        if(!el.classList.contains('thumbcaption')){
+          el.style.setProperty('height', 'auto', 'important');
+          el.style.setProperty('min-height', '0', 'important');
+          el.style.setProperty('max-height', 'none', 'important');
+          if(!isOuterBox){
+            el.style.setProperty('padding-top', '0', 'important');
+            el.style.setProperty('padding-bottom', '0', 'important');
+            el.style.setProperty('width', 'auto', 'important');
+          }
+        }
+        if(isOuterBox) break;
+        el = el.parentElement;
+      }
+    });
     holder.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
       if(!href) return;
