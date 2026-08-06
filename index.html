@@ -270,7 +270,7 @@
      inline width sized for their own narrower content column — wider
      than the image actually needs, which left a card full of dead space
      around a small picture. Forcing the wrapper to hug its content, and
-     the image to fill exactly that, closes the gap on both axes. */
+     the image to fill exactly that, closes the gap horizontally. */
   #article figure, #article .thumb{
     margin:24px 0; background:var(--murk); border:1px solid var(--line); border-radius:var(--radius); padding:14px;
     width: fit-content !important; max-width:100% !important; height:auto !important;
@@ -280,6 +280,18 @@
   }
   #article figure img, #article .thumb img{
     display:block; width:auto !important; max-width:100% !important; height:auto !important; border-radius:2px;
+  }
+  /* Vertically, Fandom reserves space for the image before it loads —
+     usually a padding-bottom percentage on a wrapper div, sized to the
+     image's aspect ratio, meant to stop the page jumping as lazy images
+     pop in. We load the real image immediately, so that reserved space
+     is just a dead gap left behind. Zero out any inline padding on every
+     wrapper between the figure and the image (but not the caption, which
+     legitimately wants its own spacing). */
+  #article figure *:not(.thumbcaption):not(figcaption),
+  #article .thumb *:not(.thumbcaption):not(figcaption){
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
   }
   #article .thumbcaption, #article figcaption{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--bone-dim); margin-top:10px; max-width:100%; }
   #article blockquote{
@@ -776,7 +788,13 @@
     // frame them in an unwanted box.
     holder.querySelectorAll('table').forEach(table => {
       const cells = [...table.querySelectorAll('td,th')];
-      const isImageOnly = cells.length > 0 && cells.every(c => c.textContent.trim() === '' && c.querySelector('img'));
+      // A cell counts as "fine" if it's either textless-with-an-image, or
+      // just an empty spacer cell (Fandom's canon/legends table pads its
+      // two badge cells with empty ones) — only bail if any cell has real
+      // text content.
+      const hasImage = cells.some(c => c.querySelector('img'));
+      const allTextless = cells.every(c => c.textContent.trim() === '');
+      const isImageOnly = cells.length > 0 && hasImage && allTextless;
       if(isImageOnly) table.classList.add('img-only-table');
     });
     holder.querySelectorAll('a[href]').forEach(a => {
