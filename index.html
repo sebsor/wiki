@@ -246,20 +246,42 @@
   #article a.new{ color:var(--ember); border-color:rgba(193,80,47,0.35); }
   #article ul, #article ol{ margin:0 0 17px; padding-left:22px; }
   #article li{ margin-bottom:6px; }
-  #article table:not(.infobox):not(.portable-infobox){
+  #article table:not(.infobox):not(.portable-infobox):not(.img-only-table){
     width:100%; border-collapse:collapse; margin:20px 0; font-size:14.5px;
     background:var(--murk); border:1px solid var(--line);
   }
-  #article table:not(.infobox):not(.portable-infobox) th,
-  #article table:not(.infobox):not(.portable-infobox) td{
+  #article table:not(.infobox):not(.portable-infobox):not(.img-only-table) th,
+  #article table:not(.infobox):not(.portable-infobox):not(.img-only-table) td{
     border:1px solid var(--line); padding:8px 12px; text-align:left;
   }
-  #article table:not(.infobox):not(.portable-infobox) th{ background:var(--murk-2); font-family:'IBM Plex Mono',monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--bone-dim); }
+  #article table:not(.infobox):not(.portable-infobox):not(.img-only-table) th{ background:var(--murk-2); font-family:'IBM Plex Mono',monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--bone-dim); }
+  /* Some tables (like Wookieepedia's Canon/Legends switcher) exist purely
+     to lay two badge images side by side — not real tabular data. Giving
+     those the card/border treatment above just frames them in an
+     unwanted box. Anything auto-detected as image-only (see
+     normalizeImageOnlyTables) gets a plain, borderless row instead. */
+  #article table.img-only-table{
+    width:auto; background:none; border:none; margin:20px 0;
+    display:flex; flex-wrap:wrap; gap:10px;
+  }
+  #article table.img-only-table tbody, #article table.img-only-table tr{ display:flex; gap:10px; }
+  #article table.img-only-table td, #article table.img-only-table th{ border:none; padding:0; background:none; }
+  /* Fandom's thumb wrappers (and the <a> inside them) often carry an
+     inline width sized for their own narrower content column — wider
+     than the image actually needs, which left a card full of dead space
+     around a small picture. Forcing the wrapper to hug its content, and
+     the image to fill exactly that, closes the gap on both axes. */
   #article figure, #article .thumb{
     margin:24px 0; background:var(--murk); border:1px solid var(--line); border-radius:var(--radius); padding:14px;
+    width: fit-content !important; max-width:100% !important; height:auto !important;
   }
-  #article .thumb img{ border-radius:2px; }
-  #article .thumbcaption, #article figcaption{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--bone-dim); margin-top:10px; }
+  #article figure > a, #article .thumb a, #article .thumbinner{
+    width:auto !important; height:auto !important; display:block;
+  }
+  #article figure img, #article .thumb img{
+    display:block; width:auto !important; max-width:100% !important; height:auto !important; border-radius:2px;
+  }
+  #article .thumbcaption, #article figcaption{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--bone-dim); margin-top:10px; max-width:100%; }
   #article blockquote{
     margin:26px 0; padding:16px 20px; border-left:2px solid var(--rift);
     background:linear-gradient(90deg, rgba(130,113,181,0.10), transparent);
@@ -510,9 +532,20 @@
   }
   tocFab.addEventListener('click', openToc);
   tocBackdrop.addEventListener('click', closeToc);
-  // close the drawer after picking a section, and whenever we navigate
+  // TOC links point at in-page anchors (#sec-3). Left to the browser's
+  // default behavior, clicking one sets location.hash — which our router
+  // also listens on for navigation between wikis/pages. Since "#sec-3"
+  // doesn't match the "#/w/..." pattern it expects, that was falling
+  // through to the home route instead of scrolling. Handling the scroll
+  // ourselves and never touching location.hash avoids the router entirely.
   document.addEventListener('click', (e) => {
-    if(e.target.closest('.toc a')) closeToc();
+    const tocLink = e.target.closest('.toc a');
+    if(!tocLink) return;
+    e.preventDefault();
+    closeToc();
+    const id = (tocLink.getAttribute('href') || '').slice(1);
+    const target = id && document.getElementById(id);
+    if(target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   window.addEventListener('hashchange', closeToc);
 
@@ -735,6 +768,16 @@
     holder.querySelectorAll('img[alt="OnACanonArticle"], img[alt="OnALegendsArticle"], img[alt="GoToLegends"], img[alt="GoToCanon"]').forEach(img => {
       const a = img.closest('a');
       (a || img).remove();
+    });
+    // Some tables (e.g. Wookieepedia's Canon/Legends switcher) exist
+    // purely to lay badge images side by side, not to hold tabular data.
+    // Detect those generically — every cell contains an image and no
+    // text — so the generic "give tables a card look" styling doesn't
+    // frame them in an unwanted box.
+    holder.querySelectorAll('table').forEach(table => {
+      const cells = [...table.querySelectorAll('td,th')];
+      const isImageOnly = cells.length > 0 && cells.every(c => c.textContent.trim() === '' && c.querySelector('img'));
+      if(isImageOnly) table.classList.add('img-only-table');
     });
     holder.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
