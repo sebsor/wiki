@@ -21,13 +21,46 @@
     --rift:#8271b5;
     --shadow: 0 20px 50px -20px rgba(0,0,0,0.6);
     --radius: 3px;
+    --font-scale: 1;
+  }
+  /* Light theme — same structure, readable on a bright background. Added
+     because a dark-only design is a real accessibility gap, not just a
+     style choice (some readers need light/high-contrast, not dark). */
+  html[data-theme="light"]{
+    --void:#faf8f2;
+    --murk:#ffffff;
+    --murk-2:#f0ece0;
+    --line: rgba(30,26,18,0.08);
+    --line-strong: rgba(30,26,18,0.16);
+    --bone:#221f18;
+    --bone-dim:#6b6355;
+    --toxin:#5c7a2c;
+    --ember:#a8431f;
+    --rift:#5d4f92;
+    --shadow: 0 20px 40px -22px rgba(30,26,18,0.18);
+  }
+  /* High-contrast — true black/white, no low-opacity lines, thicker borders,
+     saturated accents. For low-vision readers, not just "dark but louder". */
+  html[data-theme="contrast"]{
+    --void:#000000;
+    --murk:#0a0a0a;
+    --murk-2:#161616;
+    --line: rgba(255,255,255,0.35);
+    --line-strong: rgba(255,255,255,0.6);
+    --bone:#ffffff;
+    --bone-dim:#e2e2e2;
+    --toxin:#b6ff4d;
+    --ember:#ff7a45;
+    --rift:#c3b1ff;
+    --shadow: none;
   }
   *{ box-sizing:border-box; }
   html{ scroll-behavior:smooth; }
   body{
     margin:0; background:var(--void); color:var(--bone);
-    font-family:'Newsreader', serif; font-size:17px; line-height:1.65;
+    font-family:'Newsreader', serif; font-size:calc(17px * var(--font-scale)); line-height:1.65;
     -webkit-font-smoothing:antialiased;
+    transition: background-color .15s ease, color .15s ease;
   }
   ::selection{ background:var(--toxin); color:var(--void); }
   a{ color:inherit; }
@@ -42,9 +75,10 @@
   /* ---------------- Header ---------------- */
   header{
     position:sticky; top:0; z-index:50;
-    display:flex; align-items:center; justify-content:space-between; gap:20px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
     padding:14px 28px;
-    background:rgba(20,19,26,0.9); backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--void) 88%, transparent);
+    backdrop-filter: blur(10px);
     border-bottom:1px solid var(--line);
   }
   .wordmark{
@@ -64,6 +98,47 @@
     text-decoration:none; white-space:nowrap;
   }
   header .current-wiki:hover{ color:var(--toxin); }
+
+  /* ---------------- Header controls: font size + theme ---------------- */
+  .header-controls{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .font-stepper{ display:flex; border:1px solid var(--line-strong); border-radius:100px; overflow:hidden; }
+  .font-stepper button{
+    background:none; border:none; color:var(--bone-dim); cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:7px 11px;
+  }
+  .font-stepper button:first-child{ border-right:1px solid var(--line-strong); }
+  .font-stepper button:hover{ color:var(--toxin); }
+  .theme-btn{
+    background:none; border:1px solid var(--line-strong); color:var(--bone-dim); cursor:pointer;
+    border-radius:100px; padding:7px 13px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.03em; text-transform:uppercase;
+  }
+  .theme-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
+
+  /* Mobile TOC drawer trigger/backdrop (drawer positioning itself is set
+     later, after the base .toc rule, so it wins the cascade) */
+  .toc-fab{
+    position:fixed; bottom:20px; right:20px; z-index:55;
+    background:var(--toxin); color:var(--void); border:none; border-radius:100px;
+    padding:12px 18px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
+    letter-spacing:.03em; cursor:pointer; box-shadow:var(--shadow);
+  }
+  .toc-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:56;
+  }
+  .toc-backdrop.show{ display:block; }
+
+  /* ---------------- Link hover preview ---------------- */
+  .link-preview{
+    position:fixed; z-index:80; width:300px; max-width:calc(100vw - 32px);
+    background:var(--murk); border:1px solid var(--line-strong); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:14px 16px; pointer-events:none;
+  }
+  .link-preview .lp-title{ font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:15px; margin-bottom:6px; }
+  .link-preview .lp-extract{ font-family:'Newsreader',serif; font-size:13.5px; color:var(--bone-dim); line-height:1.5; }
+  .link-preview .lp-thumb{ float:right; width:56px; height:56px; object-fit:cover; border-radius:2px; margin:0 0 6px 10px; }
+  .link-preview .lp-loading{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--bone-dim); }
+  @media (hover: none){ .link-preview{ display:none !important; } }
   .suggest-panel{
     position:absolute; top:calc(100% + 6px); left:0; right:0;
     background:var(--murk); border:1px solid var(--line-strong); border-radius:var(--radius);
@@ -305,11 +380,20 @@
 
   @media (max-width: 980px){
     .layout{ grid-template-columns:1fr; }
-    .toc{ display:none; }
+    .toc-fab{ display:block !important; }
+    .toc{
+      position:fixed; top:0; left:0; bottom:0; width:82vw; max-width:340px; z-index:57;
+      background:var(--murk); padding:24px 22px; overflow-y:auto;
+      transform:translateX(-100%); transition:transform .22s ease;
+      border-right:1px solid var(--line-strong);
+    }
+    .toc.open{ transform:translateX(0); }
   }
   @media (max-width: 640px){
-    header{ padding:12px 16px; }
+    header{ padding:12px 16px; gap:8px; }
     header .wiki-search{ max-width:none; }
+    .header-controls{ gap:6px; }
+    .font-stepper button{ padding:6px 9px; }
     .home-hero{ padding:70px 18px 40px; }
     .layout{ padding:32px 16px 80px; }
   }
@@ -324,8 +408,20 @@
     <input type="text" id="headerSearch" placeholder="Search this wiki…" autocomplete="off">
     <div class="suggest-panel" id="headerSuggest"></div>
   </div>
-  <a class="current-wiki" id="currentWikiLink" href="#/" style="display:none"></a>
+  <div class="header-controls">
+    <div class="font-stepper" role="group" aria-label="Text size">
+      <button id="fontDown" aria-label="Decrease text size">A−</button>
+      <button id="fontUp" aria-label="Increase text size">A+</button>
+    </div>
+    <button class="theme-btn" id="themeBtn" aria-label="Change theme"></button>
+    <a class="current-wiki" id="currentWikiLink" href="#/" style="display:none"></a>
+  </div>
 </header>
+
+<button class="toc-fab" id="tocFab" aria-label="Open contents" aria-expanded="false" style="display:none">☰ Contents</button>
+<div class="toc-backdrop" id="tocBackdrop"></div>
+
+<div class="link-preview" id="linkPreview" style="display:none"></div>
 
 <main id="app"></main>
 
@@ -337,6 +433,62 @@
   const headerSearch = document.getElementById('headerSearch');
   const headerSuggest = document.getElementById('headerSuggest');
   const currentWikiLink = document.getElementById('currentWikiLink');
+  const themeBtn = document.getElementById('themeBtn');
+  const fontUpBtn = document.getElementById('fontUp');
+  const fontDownBtn = document.getElementById('fontDown');
+  const tocFab = document.getElementById('tocFab');
+  const tocBackdrop = document.getElementById('tocBackdrop');
+  const linkPreview = document.getElementById('linkPreview');
+
+  // ---------- theme (in-memory only — no localStorage, so it resets per
+  // visit; that's a deliberate tradeoff, see note in chat) ----------
+  const THEMES = [
+    { id:'dark',     label:'Dark' },
+    { id:'light',    label:'Light' },
+    { id:'contrast', label:'High contrast' },
+  ];
+  let themeIndex = 0;
+  function applyTheme(){
+    const t = THEMES[themeIndex];
+    if(t.id === 'dark') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t.id);
+    themeBtn.textContent = t.label;
+  }
+  themeBtn.addEventListener('click', () => {
+    themeIndex = (themeIndex + 1) % THEMES.length;
+    applyTheme();
+  });
+  applyTheme();
+
+  // ---------- font size (in-memory only, same reasoning as theme) ----------
+  let fontScale = 1;
+  function applyFontScale(){
+    document.documentElement.style.setProperty('--font-scale', fontScale.toFixed(2));
+  }
+  fontUpBtn.addEventListener('click', () => { fontScale = Math.min(1.3, fontScale + 0.075); applyFontScale(); });
+  fontDownBtn.addEventListener('click', () => { fontScale = Math.max(0.85, fontScale - 0.075); applyFontScale(); });
+
+  // ---------- mobile TOC drawer ----------
+  function openToc(){
+    const toc = document.querySelector('.toc');
+    if(!toc) return;
+    toc.classList.add('open');
+    tocBackdrop.classList.add('show');
+    tocFab.setAttribute('aria-expanded', 'true');
+  }
+  function closeToc(){
+    const toc = document.querySelector('.toc');
+    if(toc) toc.classList.remove('open');
+    tocBackdrop.classList.remove('show');
+    tocFab.setAttribute('aria-expanded', 'false');
+  }
+  tocFab.addEventListener('click', openToc);
+  tocBackdrop.addEventListener('click', closeToc);
+  // close the drawer after picking a section, and whenever we navigate
+  document.addEventListener('click', (e) => {
+    if(e.target.closest('.toc a')) closeToc();
+  });
+  window.addEventListener('hashchange', closeToc);
 
   const CURATED = [
     { sub:'forgottenrealms', name:'Forgotten Realms', blurb:'D&D · Faerûn lore' },
@@ -350,6 +502,7 @@
   ];
 
   const siteCache = {};   // sub -> siteinfo
+  const previewCache = {}; // "sub::title" -> extract data, or 'loading' / 'error'
   let currentSub = null;
 
   // ---------- helpers ----------
@@ -698,6 +851,90 @@
       tabber.querySelectorAll(':scope > .tabbertab').forEach(p => { p.style.display = (p.dataset.tabIndex === idx) ? '' : 'none'; });
     }
   });
+
+  // ---------- link hover preview (Wikiwand-style) ----------
+  // Delegated at the document level so it survives every article re-render
+  // without needing to re-attach per link. Skipped entirely on touch devices
+  // via the (hover: none) CSS rule and this JS check, since hover previews
+  // don't make sense without a hover.
+  const canHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+  let hoverTimer = null;
+  let hoverToken = 0;
+
+  async function getPreview(sub, title){
+    const key = sub + '::' + title;
+    if(previewCache[key]) return previewCache[key];
+    try{
+      const data = await fetchJSON(api(sub, {
+        action:'query', prop:'extracts|pageimages', exintro:1, exchars:220, explaintext:1,
+        piprop:'thumbnail', pithumbsize:160, redirects:1, titles:title
+      }));
+      const pages = data.query && data.query.pages;
+      const page = pages ? Object.values(pages)[0] : null;
+      const result = page && !page.missing
+        ? { extract: page.extract || '', thumb: page.thumbnail ? page.thumbnail.source : null }
+        : { extract: '', thumb: null, missing: true };
+      previewCache[key] = result;
+      return result;
+    }catch(err){
+      previewCache[key] = { extract: '', thumb: null, error: true };
+      return previewCache[key];
+    }
+  }
+
+  function positionPreview(link){
+    const r = link.getBoundingClientRect();
+    let left = r.left;
+    let top = r.bottom + 8;
+    const maxLeft = window.innerWidth - 316;
+    if(left > maxLeft) left = Math.max(16, maxLeft);
+    if(top + 160 > window.innerHeight) top = Math.max(16, r.top - 8 - 160);
+    linkPreview.style.left = left + 'px';
+    linkPreview.style.top = top + 'px';
+  }
+
+  function hideLinkPreview(){
+    linkPreview.style.display = 'none';
+  }
+
+  if(canHover){
+    document.addEventListener('mouseover', (e) => {
+      const a = e.target.closest('a[data-internal]');
+      if(!a || a === e.relatedTarget) return;
+      clearTimeout(hoverTimer);
+      const myToken = ++hoverToken;
+      hoverTimer = setTimeout(async () => {
+        const href = a.getAttribute('href') || '';
+        const m = href.match(/^#\/w\/([^/]+)\/(.+)$/);
+        if(!m) return;
+        const sub = m[1], title = decodeURIComponent(m[2]);
+        positionPreview(a);
+        linkPreview.style.display = 'block';
+        linkPreview.innerHTML = `<div class="lp-loading">Loading “${esc(title)}”…</div>`;
+        const data = await getPreview(sub, title);
+        if(myToken !== hoverToken) return; // hovered elsewhere before this landed
+        if(data.missing){
+          linkPreview.innerHTML = `<div class="lp-title">${esc(title)}</div><div class="lp-extract">No article found at this title.</div>`;
+        } else if(data.error){
+          hideLinkPreview();
+        } else {
+          linkPreview.innerHTML =
+            (data.thumb ? `<img class="lp-thumb" src="${esc(data.thumb)}" alt="">` : '') +
+            `<div class="lp-title">${esc(title)}</div><div class="lp-extract">${esc(data.extract || 'No preview available.')}</div>`;
+        }
+        positionPreview(a);
+      }, 320);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const a = e.target.closest('a[data-internal]');
+      if(!a) return;
+      if(a.contains(e.relatedTarget)) return;
+      clearTimeout(hoverTimer);
+      hoverToken++; // invalidate any in-flight fetch
+      hideLinkPreview();
+    });
+    window.addEventListener('scroll', hideLinkPreview, { passive:true });
+  }
 
   function stripTags(html){
     const d = document.createElement('div');
