@@ -366,6 +366,19 @@
     padding-bottom: 0 !important;
   }
   #article .thumbcaption, #article figcaption{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--bone-dim); margin-top:10px; max-width:100%; }
+  /* Fandom sometimes builds a caption out of several block-level pieces
+     (one per linked phrase) instead of one flowing line of text — each
+     one then renders on its own row with its own full-width border,
+     which is what's showing here rather than a real design intent.
+     Forcing every descendant back to inline collapses it into a normal
+     sentence regardless of what block element it was built from, then
+     re-applies the link underline only to actual links afterward. */
+  #article .thumbcaption *, #article figcaption *{
+    display:inline !important; border:none !important; margin:0 !important; padding:0 !important;
+  }
+  #article .thumbcaption a, #article figcaption a{
+    color:var(--toxin) !important; border-bottom:1px solid rgba(147,178,76,0.35) !important;
+  }
   #article blockquote{
     margin:26px 0; padding:16px 20px; border-left:2px solid var(--rift);
     background:linear-gradient(90deg, rgba(130,113,181,0.10), transparent);
