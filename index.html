@@ -226,7 +226,15 @@
     display:grid; grid-template-columns:200px minmax(0,1fr) 330px; gap:44px; align-items:start;
   }
   .toc{ position:sticky; top:80px; font-family:'IBM Plex Mono',monospace; font-size:12px; }
-  .toc .eyebrow{ display:block; margin-bottom:12px; }
+  .toc-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+  .toc .eyebrow{ display:block; }
+  .toc-head .eyebrow{ margin-bottom:0; }
+  .toc-top-btn{
+    background:none; border:1px solid var(--line-strong); color:var(--bone-dim); cursor:pointer;
+    width:22px; height:22px; border-radius:100px; font-size:12px; line-height:1;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .toc-top-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
   .toc a{
     display:block; text-decoration:none; color:var(--bone-dim); padding:5px 0 5px 11px;
     border-left:1px solid var(--line); line-height:1.4;
@@ -571,6 +579,12 @@
   // through to the home route instead of scrolling. Handling the scroll
   // ourselves and never touching location.hash avoids the router entirely.
   document.addEventListener('click', (e) => {
+    const topBtn = e.target.closest('#tocTopBtn');
+    if(topBtn){
+      closeToc();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const tocLink = e.target.closest('.toc a');
     if(!tocLink) return;
     e.preventDefault();
@@ -929,7 +943,10 @@
       </div>
       <div class="layout">
         <nav class="toc">
-          <span class="eyebrow">On this page</span>
+          <div class="toc-head">
+            <span class="eyebrow">On this page</span>
+            <button class="toc-top-btn" id="tocTopBtn" aria-label="Back to top" title="Back to top">↑</button>
+          </div>
           ${tocHTML || '<span style="color:var(--bone-dim)">No sections</span>'}
         </nav>
         <article id="article"></article>
