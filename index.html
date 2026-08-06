@@ -569,6 +569,23 @@
     if(target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   window.addEventListener('hashchange', closeToc);
+  // Clicking an internal link navigates via the router, which replaces
+  // the page content entirely — the browser never fires a mouseout for
+  // the element you were hovering, since it's destroyed mid-navigation
+  // rather than actually left. Without this, the preview card (which
+  // lives outside the page content and survives navigation) just sits
+  // there showing stale info until you happen to hover another link.
+  // Bumping hoverToken too invalidates any preview fetch still in
+  // flight, so a slow request can't pop the old preview back up after
+  // you've already navigated away.
+  window.addEventListener('hashchange', () => { hoverToken++; hideLinkPreview(); });
+  // Clicking an internal link navigates via the router, which replaces
+  // the page content entirely — the browser never fires a mouseout for
+  // the element you were hovering, since it's destroyed mid-navigation
+  // rather than actually left. Without this, the preview card (which
+  // lives outside the page content and survives navigation) just sits
+  // there showing stale info until you happen to hover another link.
+  window.addEventListener('hashchange', hideLinkPreview);
 
   const CURATED = [
     { sub:'forgottenrealms', name:'Forgotten Realms', blurb:'D&D · Faerûn lore' },
