@@ -128,19 +128,23 @@
   }
   .theme-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
 
-  /* Mobile TOC/sidebar drawer triggers + shared backdrop (drawer
-     positioning itself is set later, after the base .toc/.side-panel
-     rules, so it wins the cascade) */
-  .toc-fab, .side-fab{
-    position:fixed; bottom:20px; z-index:55;
-    background:var(--toxin); color:var(--void); border:none; border-radius:100px;
-    padding:12px 18px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
-    letter-spacing:.03em; cursor:pointer; box-shadow:var(--shadow);
+  /* Panel-nav lives inside <header> (mobile only — see media query
+     below), so it inherits the header's own position:sticky rather
+     than needing separate fixed-positioning logic. */
+  .panel-nav{ gap:8px; width:100%; }
+  .panel-nav-btn{
+    flex:1; background:var(--murk); color:var(--bone-dim); border:1px solid var(--line-strong);
+    border-radius:100px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:11.5px;
+    font-weight:600; letter-spacing:.03em; cursor:pointer;
   }
-  .toc-fab{ right:20px; }
-  .side-fab{ left:20px; background:var(--murk); color:var(--bone); border:1px solid var(--line-strong); }
+  .panel-nav-btn[aria-expanded="true"]{ background:var(--toxin); color:var(--void); border-color:var(--toxin); }
+  /* Backdrop starts below the header (--header-h, kept in sync with the
+     header's real rendered height by JS) instead of covering the full
+     viewport — the header, including these same toggle buttons, stays
+     visible and usable while a panel is open underneath it. */
   .toc-backdrop{
-    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:56;
+    display:none; position:fixed; top:var(--header-h, 60px); left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.5); z-index:56;
   }
   .toc-backdrop.show{ display:block; }
 
@@ -504,21 +508,27 @@
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
+  /* panel-nav's own display is otherwise fully JS-controlled (shown only
+     once a real article with a .toc/.side-panel exists) — this just
+     forces it off above the mobile breakpoint regardless of that JS
+     state, so resizing a window wider after visiting an article on
+     mobile can't leave the row stranded in the desktop header. */
+  @media (min-width: 981px){ .panel-nav{ display:none !important; } }
   @media (max-width: 980px){
     .layout{ grid-template-columns:1fr; }
-    .toc-fab, .side-fab{ display:block !important; }
+    .panel-nav{ order:4; }
     .toc{
-      position:fixed; top:0; left:0; bottom:0; width:82vw; max-width:340px; z-index:57;
+      position:fixed; top:var(--header-h, 60px); left:0; bottom:0; width:82vw; max-width:340px; z-index:57;
       background:var(--murk); padding:24px 22px; overflow-y:auto; max-height:none;
       transform:translateX(-100%); transition:transform .22s ease;
       border-right:1px solid var(--line-strong);
     }
     .toc.open{ transform:translateX(0); }
-    /* Sidebar becomes a same-style drawer sliding in from the right,
+    /* Sidebar becomes a same-style panel sliding in from the right,
        instead of just sitting at the bottom of a long article where
        it's easy to miss entirely. */
     .side-panel{
-      position:fixed; top:0; right:0; bottom:0; width:82vw; max-width:340px; z-index:57;
+      position:fixed; top:var(--header-h, 60px); right:0; bottom:0; width:82vw; max-width:340px; z-index:57;
       max-height:none; overflow-y:auto;
       transform:translateX(100%); transition:transform .22s ease;
       border-left:1px solid var(--line-strong); border-radius:0;
@@ -564,10 +574,18 @@
     <button class="theme-btn" id="themeBtn" aria-label="Change theme"></button>
     <a class="current-wiki" id="currentWikiLink" href="#/" style="display:none"></a>
   </div>
+  <!-- Mobile-only row, wraps below the search bar. Only shown while a
+       wiki article is loaded (there's nothing to jump to otherwise).
+       Living inside <header> means it inherits the header's own
+       position:sticky — it's pinned in view exactly as reliably as the
+       search bar already is, no separate positioning logic needed. -->
+  <div class="panel-nav" id="panelNav" style="display:none">
+    <button class="panel-nav-btn" id="tocToggleBtn" aria-expanded="false">☰ Contents</button>
+    <button class="panel-nav-btn" id="sideToggleBtn" aria-expanded="false">ⓘ Page info</button>
+  </div>
 </header>
 
-<button class="toc-fab" id="tocFab" aria-label="Open contents" aria-expanded="false" style="display:none">☰ Contents</button>
-<button class="side-fab" id="sideFab" aria-label="Open page info" aria-expanded="false" style="display:none">ⓘ Info</button>
+<div class="toc-backdrop" id="tocBackdrop"></div>
 <div class="toc-backdrop" id="tocBackdrop"></div>
 
 <div class="link-preview" id="linkPreview" style="display:none"></div>
@@ -585,10 +603,22 @@
   const themeBtn = document.getElementById('themeBtn');
   const fontUpBtn = document.getElementById('fontUp');
   const fontDownBtn = document.getElementById('fontDown');
-  const tocFab = document.getElementById('tocFab');
-  const sideFab = document.getElementById('sideFab');
+  const panelNav = document.getElementById('panelNav');
+  const tocToggleBtn = document.getElementById('tocToggleBtn');
+  const sideToggleBtn = document.getElementById('sideToggleBtn');
   const tocBackdrop = document.getElementById('tocBackdrop');
   const linkPreview = document.getElementById('linkPreview');
+  const headerEl = document.querySelector('header');
+
+  // Keep --header-h in sync with the header's actual rendered height —
+  // it wraps to 2 or 3 rows depending on view and screen width, so a
+  // fixed guess would leave a gap or an overlap. Anything anchored
+  // "below the header" (the mobile panels, the backdrop) reads this.
+  function syncHeaderHeight(){
+    document.documentElement.style.setProperty('--header-h', headerEl.offsetHeight + 'px');
+  }
+  window.addEventListener('resize', syncHeaderHeight);
+  syncHeaderHeight();
 
   // ---------- theme (in-memory only — no localStorage, so it resets per
   // visit; that's a deliberate tradeoff, see note in chat) ----------
@@ -620,23 +650,26 @@
   fontUpBtn.addEventListener('click', () => { fontScale = Math.min(1.3, fontScale + 0.075); applyFontScale(); });
   fontDownBtn.addEventListener('click', () => { fontScale = Math.max(0.85, fontScale - 0.075); applyFontScale(); });
 
-  // ---------- mobile TOC / sidebar drawers ----------
-  // Both slide in over the page and share one backdrop; opening either
-  // one closes the other first, since on a narrow screen having both
-  // open at once would just overlap in the middle.
+  // ---------- mobile TOC / sidebar panels ----------
+  // Triggered from buttons inside <header> now (not floating FABs), and
+  // anchored below the header via --header-h rather than covering the
+  // whole screen — the header, including these same buttons, stays
+  // visible and usable the whole time. Opening either one closes the
+  // other first, since on a narrow screen having both open at once
+  // would just overlap in the middle.
   function openToc(){
     const toc = document.querySelector('.toc');
     if(!toc) return;
     closeSide();
     toc.classList.add('open');
     tocBackdrop.classList.add('show');
-    tocFab.setAttribute('aria-expanded', 'true');
+    tocToggleBtn.setAttribute('aria-expanded', 'true');
   }
   function closeToc(){
     const toc = document.querySelector('.toc');
     if(toc) toc.classList.remove('open');
     if(!document.querySelector('.side-panel.open')) tocBackdrop.classList.remove('show');
-    tocFab.setAttribute('aria-expanded', 'false');
+    tocToggleBtn.setAttribute('aria-expanded', 'false');
   }
   function openSide(){
     const side = document.querySelector('.side-panel');
@@ -644,19 +677,19 @@
     closeToc();
     side.classList.add('open');
     tocBackdrop.classList.add('show');
-    sideFab.setAttribute('aria-expanded', 'true');
+    sideToggleBtn.setAttribute('aria-expanded', 'true');
   }
   function closeSide(){
     const side = document.querySelector('.side-panel');
     if(side) side.classList.remove('open');
     if(!document.querySelector('.toc.open')) tocBackdrop.classList.remove('show');
-    sideFab.setAttribute('aria-expanded', 'false');
+    sideToggleBtn.setAttribute('aria-expanded', 'false');
   }
   function closeAllDrawers(){ closeToc(); closeSide(); }
-  tocFab.addEventListener('click', () => {
+  tocToggleBtn.addEventListener('click', () => {
     document.querySelector('.toc.open') ? closeToc() : openToc();
   });
-  sideFab.addEventListener('click', () => {
+  sideToggleBtn.addEventListener('click', () => {
     document.querySelector('.side-panel.open') ? closeSide() : openSide();
   });
   tocBackdrop.addEventListener('click', closeAllDrawers);
@@ -756,6 +789,8 @@
       currentSub = null;
       headerSearchWrap.classList.remove('show');
       currentWikiLink.style.display = 'none';
+      panelNav.style.display = 'none';
+      syncHeaderHeight();
       renderHome();
     } else {
       currentSub = r.sub;
@@ -863,6 +898,10 @@
     currentWikiLink.style.display = 'inline';
     currentWikiLink.textContent = sub + '.fandom.com';
     currentWikiLink.href = `#/w/${sub}`;
+    // Hidden until renderArticle actually builds a .toc/.side-panel to
+    // point at — nothing to jump to while the loading/error states show.
+    panelNav.style.display = 'none';
+    syncHeaderHeight();
 
     app.innerHTML = `
       <div class="center-state">
@@ -1060,6 +1099,10 @@
     normalizeLazyImages(document.getElementById('infoboxSlot'));
     normalizeTabbers(document.getElementById('article'));
     normalizeTabbers(document.getElementById('infoboxSlot'));
+    // Real .toc/.side-panel now exist — safe to reveal the header
+    // buttons that jump to them (CSS still gates this to mobile widths).
+    panelNav.style.display = 'flex';
+    syncHeaderHeight();
 
     // intercept internal link clicks (hash already routes, but ensure SPA nav triggers re-render even if hash matches pattern change only)
     document.getElementById('article').addEventListener('click', (e) => {
