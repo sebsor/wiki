@@ -720,6 +720,10 @@
         const pageTitle = decodeURIComponent(href.replace('/wiki/','').split('#')[0]).replace(/_/g,' ');
         a.setAttribute('href', `#/w/${sub}/${encodeURIComponent(pageTitle)}`);
         a.setAttribute('data-internal', '1');
+        // MediaWiki bakes a title="Page name" attribute onto every wikilink,
+        // which triggers the browser's own tooltip — it visually collides
+        // with our custom hover-preview card. We don't need it either way.
+        a.removeAttribute('title');
       } else if(href.startsWith('#')){
         // in-page anchor (e.g. references) — leave as is
       } else if(/^(https?:)?\/\//.test(href)){
@@ -776,6 +780,8 @@
     if(infoboxHTML){
       document.getElementById('infoboxSlot').innerHTML = infoboxHTML;
     }
+    normalizeLazyImages(document.getElementById('article'));
+    normalizeLazyImages(document.getElementById('infoboxSlot'));
     normalizeTabbers(document.getElementById('article'));
     normalizeTabbers(document.getElementById('infoboxSlot'));
 
@@ -796,6 +802,30 @@
   // tab/panel pair "current" per tabber (defaulting to the first if the
   // fetched HTML doesn't already flag one), and index every tab/panel pair
   // so the delegated click handler below can find its match.
+  // Fandom lazy-loads nearly every image: the <img> ships with a tiny
+  // placeholder (usually a base64 1x1 gif) and the real URL sits in a
+  // data-src (or similar) attribute, swapped in by their own JS after
+  // load. We strip scripts for safety, so that swap never happens and
+  // images render blank. This does the swap ourselves, once, on the
+  // static HTML we already have.
+  function normalizeLazyImages(root){
+    root.querySelectorAll('img').forEach(img => {
+      const real = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
+      if(real){
+        img.setAttribute('src', real);
+        img.removeAttribute('data-src');
+        img.removeAttribute('data-lazy-src');
+        img.removeAttribute('data-original');
+      }
+      const realSrcset = img.getAttribute('data-srcset');
+      if(realSrcset){
+        img.setAttribute('srcset', realSrcset);
+        img.removeAttribute('data-srcset');
+      }
+      img.classList.remove('lazyload', 'lazyloaded', 'image-lazyload', 'lzy_img');
+    });
+  }
+
   function normalizeTabbers(root){
     root.querySelectorAll('.wds-tabber').forEach(tabber => {
       const tabs = [...tabber.querySelectorAll('.wds-tabs__tab')].filter(t => t.closest('.wds-tabber') === tabber);
@@ -877,15 +907,30 @@
     const key = sub + '::' + title;
     if(previewCache[key]) return previewCache[key];
     try{
-      const data = await fetchJSON(api(sub, {
-        action:'query', prop:'extracts|pageimages', exintro:1, exchars:220, explaintext:1,
-        piprop:'thumbnail', pithumbsize:160, redirects:1, titles:title
-      }));
-      const pages = data.query && data.query.pages;
+      // action=parse&section=0 is guaranteed to exist on every MediaWiki
+      // install (unlike prop=extracts, which needs the TextExtracts
+      // extension — not reliably present across Fandom wikis, and the
+      // reason previews were showing "No preview available" even when
+      // the thumbnail loaded fine). We build the extract ourselves from
+      // the lead section's rendered HTML instead.
+      const [introRes, imgRes] = await Promise.all([
+        fetchJSON(api(sub, { action:'parse', page:title, prop:'text', section:0, redirects:1 })),
+        fetchJSON(api(sub, { action:'query', prop:'pageimages', piprop:'thumbnail', pithumbsize:160, redirects:1, titles:title }))
+      ]);
+      if(introRes.error){
+        const result = { extract: '', thumb: null, missing: true };
+        previewCache[key] = result;
+        return result;
+      }
+      const div = document.createElement('div');
+      div.innerHTML = introRes.parse.text['*'];
+      div.querySelectorAll('sup.reference, .mw-editsection, table, style, script, .hatnote').forEach(el => el.remove());
+      let text = (div.textContent || '').replace(/\s+/g, ' ').trim();
+      if(text.length > 220) text = text.slice(0, 220).replace(/\s+\S*$/, '') + '…';
+      const pages = imgRes.query && imgRes.query.pages;
       const page = pages ? Object.values(pages)[0] : null;
-      const result = page && !page.missing
-        ? { extract: page.extract || '', thumb: page.thumbnail ? page.thumbnail.source : null }
-        : { extract: '', thumb: null, missing: true };
+      const thumb = page && page.thumbnail ? page.thumbnail.source : null;
+      const result = { extract: text, thumb, missing: false };
       previewCache[key] = result;
       return result;
     }catch(err){
