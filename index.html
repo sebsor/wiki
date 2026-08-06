@@ -123,8 +123,8 @@
   .font-stepper button:hover{ color:var(--toxin); }
   .theme-btn{
     background:none; border:1px solid var(--line-strong); color:var(--bone-dim); cursor:pointer;
-    border-radius:100px; padding:7px 13px; font-family:'IBM Plex Mono',monospace; font-size:11px;
-    letter-spacing:.03em; text-transform:uppercase;
+    border-radius:100px; width:30px; height:30px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:13px;
   }
   .theme-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
 
@@ -262,12 +262,18 @@
   .toc-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
   .toc .eyebrow{ display:block; }
   .toc-head .eyebrow{ margin-bottom:0; }
-  .toc-top-btn{
+  .toc-head-btns{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .toc-top-btn, .drawer-close-btn{
     background:none; border:1px solid var(--line-strong); color:var(--bone-dim); cursor:pointer;
     width:22px; height:22px; border-radius:100px; font-size:12px; line-height:1;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
-  .toc-top-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
+  .toc-top-btn:hover, .drawer-close-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
+  /* The close button only earns its place in the mobile drawers, where
+     the panel covers the whole screen and an explicit way out matters.
+     On desktop the columns sit inline in the page — there's nothing to
+     "close". */
+  .drawer-close-btn{ display:none; }
   .toc a{
     display:block; text-decoration:none; color:var(--bone-dim); padding:5px 0 5px 11px;
     border-left:1px solid var(--line); line-height:1.4;
@@ -518,12 +524,24 @@
       border-left:1px solid var(--line-strong); border-radius:0;
     }
     .side-panel.open{ transform:translateX(0); }
+    .drawer-close-btn{ display:flex; }
+    /* Bigger tap targets for section links once they're in a touch
+       drawer rather than a mouse-hover sidebar. */
+    .toc a{ padding:9px 0 9px 11px; font-size:13px; }
   }
   @media (max-width: 640px){
-    header{ padding:12px 16px; gap:8px; }
-    header .wiki-search{ max-width:none; }
+    header{ padding:10px 16px; gap:8px 10px; flex-wrap:wrap; }
+    /* Row 1: wordmark + controls, always fits on its own line now that
+       the theme button is icon-only and the wiki link is hidden below.
+       Row 2 (only present in wiki view): search bar, full width. */
+    header .wiki-search{
+      order:3; flex:0 0 100%; max-width:none;
+    }
     .header-controls{ gap:6px; }
     .font-stepper button{ padding:6px 9px; }
+    /* The breadcrumb right below the header already names the current
+       wiki — repeating it here just crowds an already-tight row. */
+    header .current-wiki{ display:none !important; }
     .home-hero{ padding:70px 18px 40px; }
     .layout{ padding:32px 16px 80px; }
   }
@@ -575,16 +593,18 @@
   // ---------- theme (in-memory only — no localStorage, so it resets per
   // visit; that's a deliberate tradeoff, see note in chat) ----------
   const THEMES = [
-    { id:'dark',     label:'Dark' },
-    { id:'light',    label:'Light' },
-    { id:'contrast', label:'High contrast' },
+    { id:'dark',     label:'Dark',          glyph:'●' },
+    { id:'light',    label:'Light',         glyph:'○' },
+    { id:'contrast', label:'High contrast', glyph:'◐' },
   ];
   let themeIndex = 0;
   function applyTheme(){
     const t = THEMES[themeIndex];
     if(t.id === 'dark') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', t.id);
-    themeBtn.textContent = t.label;
+    themeBtn.textContent = t.glyph;
+    themeBtn.setAttribute('aria-label', `Theme: ${t.label}. Tap to change.`);
+    themeBtn.title = `Theme: ${t.label}`;
   }
   themeBtn.addEventListener('click', () => {
     themeIndex = (themeIndex + 1) % THEMES.length;
@@ -633,8 +653,12 @@
     sideFab.setAttribute('aria-expanded', 'false');
   }
   function closeAllDrawers(){ closeToc(); closeSide(); }
-  tocFab.addEventListener('click', openToc);
-  sideFab.addEventListener('click', openSide);
+  tocFab.addEventListener('click', () => {
+    document.querySelector('.toc.open') ? closeToc() : openToc();
+  });
+  sideFab.addEventListener('click', () => {
+    document.querySelector('.side-panel.open') ? closeSide() : openSide();
+  });
   tocBackdrop.addEventListener('click', closeAllDrawers);
   // TOC links point at in-page anchors (#sec-3). Left to the browser's
   // default behavior, clicking one sets location.hash — which our router
@@ -643,6 +667,8 @@
   // through to the home route instead of scrolling. Handling the scroll
   // ourselves and never touching location.hash avoids the router entirely.
   document.addEventListener('click', (e) => {
+    if(e.target.closest('#tocCloseBtn')){ closeToc(); return; }
+    if(e.target.closest('#sideCloseBtn')){ closeSide(); return; }
     const topBtn = e.target.closest('#tocTopBtn');
     if(topBtn){
       closeToc();
@@ -1009,13 +1035,19 @@
         <nav class="toc">
           <div class="toc-head">
             <span class="eyebrow">On this page</span>
-            <button class="toc-top-btn" id="tocTopBtn" aria-label="Back to top" title="Back to top">↑</button>
+            <div class="toc-head-btns">
+              <button class="toc-top-btn" id="tocTopBtn" aria-label="Back to top" title="Back to top">↑</button>
+              <button class="drawer-close-btn" id="tocCloseBtn" aria-label="Close menu">✕</button>
+            </div>
           </div>
           ${tocHTML || '<span style="color:var(--bone-dim)">No sections</span>'}
         </nav>
         <article id="article"></article>
         <aside class="side-panel">
-          <span class="eyebrow">${esc(info.sitename)}</span>
+          <div class="toc-head">
+            <span class="eyebrow">${esc(info.sitename)}</span>
+            <button class="drawer-close-btn" id="sideCloseBtn" aria-label="Close info panel">✕</button>
+          </div>
           <div id="infoboxSlot"></div>
         </aside>
       </div>
