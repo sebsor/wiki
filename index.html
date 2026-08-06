@@ -528,20 +528,20 @@
     /* Bigger tap targets for section links once they're in a touch
        drawer rather than a mouse-hover sidebar. */
     .toc a{ padding:9px 0 9px 11px; font-size:13px; }
+    /* Same breakpoint as everything else above — this needs to switch
+       over exactly when the rest of the mobile layout does. Putting it
+       at a narrower breakpoint (as an earlier pass did) left a dead
+       zone between the two where the search bar still used the desktop
+       flex:1 rule with no room to wrap, squeezing the pill-shaped input
+       down until it looked like little more than a circle. */
+    header{ flex-wrap:wrap; }
+    header .wiki-search{ order:3; flex:0 0 100%; max-width:none; }
+    header .current-wiki{ display:none !important; }
   }
   @media (max-width: 640px){
-    header{ padding:10px 16px; gap:8px 10px; flex-wrap:wrap; }
-    /* Row 1: wordmark + controls, always fits on its own line now that
-       the theme button is icon-only and the wiki link is hidden below.
-       Row 2 (only present in wiki view): search bar, full width. */
-    header .wiki-search{
-      order:3; flex:0 0 100%; max-width:none;
-    }
+    header{ padding:10px 16px; gap:8px 10px; }
     .header-controls{ gap:6px; }
     .font-stepper button{ padding:6px 9px; }
-    /* The breadcrumb right below the header already names the current
-       wiki — repeating it here just crowds an already-tight row. */
-    header .current-wiki{ display:none !important; }
     .home-hero{ padding:70px 18px 40px; }
     .layout{ padding:32px 16px 80px; }
   }
