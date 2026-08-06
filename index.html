@@ -128,14 +128,17 @@
   }
   .theme-btn:hover{ color:var(--toxin); border-color:var(--toxin); }
 
-  /* Mobile TOC drawer trigger/backdrop (drawer positioning itself is set
-     later, after the base .toc rule, so it wins the cascade) */
-  .toc-fab{
-    position:fixed; bottom:20px; right:20px; z-index:55;
+  /* Mobile TOC/sidebar drawer triggers + shared backdrop (drawer
+     positioning itself is set later, after the base .toc/.side-panel
+     rules, so it wins the cascade) */
+  .toc-fab, .side-fab{
+    position:fixed; bottom:20px; z-index:55;
     background:var(--toxin); color:var(--void); border:none; border-radius:100px;
     padding:12px 18px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
     letter-spacing:.03em; cursor:pointer; box-shadow:var(--shadow);
   }
+  .toc-fab{ right:20px; }
+  .side-fab{ left:20px; background:var(--murk); color:var(--bone); border:1px solid var(--line-strong); }
   .toc-backdrop{
     display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:56;
   }
@@ -497,7 +500,7 @@
 
   @media (max-width: 980px){
     .layout{ grid-template-columns:1fr; }
-    .toc-fab{ display:block !important; }
+    .toc-fab, .side-fab{ display:block !important; }
     .toc{
       position:fixed; top:0; left:0; bottom:0; width:82vw; max-width:340px; z-index:57;
       background:var(--murk); padding:24px 22px; overflow-y:auto; max-height:none;
@@ -505,7 +508,16 @@
       border-right:1px solid var(--line-strong);
     }
     .toc.open{ transform:translateX(0); }
-    .side-panel{ position:static; max-height:none; overflow:visible; }
+    /* Sidebar becomes a same-style drawer sliding in from the right,
+       instead of just sitting at the bottom of a long article where
+       it's easy to miss entirely. */
+    .side-panel{
+      position:fixed; top:0; right:0; bottom:0; width:82vw; max-width:340px; z-index:57;
+      max-height:none; overflow-y:auto;
+      transform:translateX(100%); transition:transform .22s ease;
+      border-left:1px solid var(--line-strong); border-radius:0;
+    }
+    .side-panel.open{ transform:translateX(0); }
   }
   @media (max-width: 640px){
     header{ padding:12px 16px; gap:8px; }
@@ -537,6 +549,7 @@
 </header>
 
 <button class="toc-fab" id="tocFab" aria-label="Open contents" aria-expanded="false" style="display:none">☰ Contents</button>
+<button class="side-fab" id="sideFab" aria-label="Open page info" aria-expanded="false" style="display:none">ⓘ Info</button>
 <div class="toc-backdrop" id="tocBackdrop"></div>
 
 <div class="link-preview" id="linkPreview" style="display:none"></div>
@@ -555,6 +568,7 @@
   const fontUpBtn = document.getElementById('fontUp');
   const fontDownBtn = document.getElementById('fontDown');
   const tocFab = document.getElementById('tocFab');
+  const sideFab = document.getElementById('sideFab');
   const tocBackdrop = document.getElementById('tocBackdrop');
   const linkPreview = document.getElementById('linkPreview');
 
@@ -586,10 +600,14 @@
   fontUpBtn.addEventListener('click', () => { fontScale = Math.min(1.3, fontScale + 0.075); applyFontScale(); });
   fontDownBtn.addEventListener('click', () => { fontScale = Math.max(0.85, fontScale - 0.075); applyFontScale(); });
 
-  // ---------- mobile TOC drawer ----------
+  // ---------- mobile TOC / sidebar drawers ----------
+  // Both slide in over the page and share one backdrop; opening either
+  // one closes the other first, since on a narrow screen having both
+  // open at once would just overlap in the middle.
   function openToc(){
     const toc = document.querySelector('.toc');
     if(!toc) return;
+    closeSide();
     toc.classList.add('open');
     tocBackdrop.classList.add('show');
     tocFab.setAttribute('aria-expanded', 'true');
@@ -597,11 +615,27 @@
   function closeToc(){
     const toc = document.querySelector('.toc');
     if(toc) toc.classList.remove('open');
-    tocBackdrop.classList.remove('show');
+    if(!document.querySelector('.side-panel.open')) tocBackdrop.classList.remove('show');
     tocFab.setAttribute('aria-expanded', 'false');
   }
+  function openSide(){
+    const side = document.querySelector('.side-panel');
+    if(!side) return;
+    closeToc();
+    side.classList.add('open');
+    tocBackdrop.classList.add('show');
+    sideFab.setAttribute('aria-expanded', 'true');
+  }
+  function closeSide(){
+    const side = document.querySelector('.side-panel');
+    if(side) side.classList.remove('open');
+    if(!document.querySelector('.toc.open')) tocBackdrop.classList.remove('show');
+    sideFab.setAttribute('aria-expanded', 'false');
+  }
+  function closeAllDrawers(){ closeToc(); closeSide(); }
   tocFab.addEventListener('click', openToc);
-  tocBackdrop.addEventListener('click', closeToc);
+  sideFab.addEventListener('click', openSide);
+  tocBackdrop.addEventListener('click', closeAllDrawers);
   // TOC links point at in-page anchors (#sec-3). Left to the browser's
   // default behavior, clicking one sets location.hash — which our router
   // also listens on for navigation between wikis/pages. Since "#sec-3"
@@ -623,7 +657,7 @@
     const target = id && document.getElementById(id);
     if(target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  window.addEventListener('hashchange', closeToc);
+  window.addEventListener('hashchange', closeAllDrawers);
   // Clicking an internal link navigates via the router, which replaces
   // the page content entirely — the browser never fires a mouseout for
   // the element you were hovering, since it's destroyed mid-navigation
