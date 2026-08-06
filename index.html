@@ -130,14 +130,17 @@
 
   /* ---------------- Link hover preview ---------------- */
   .link-preview{
-    position:fixed; z-index:80; width:300px; max-width:calc(100vw - 32px);
+    position:fixed; z-index:80; width:340px; max-width:calc(100vw - 32px);
     background:var(--murk); border:1px solid var(--line-strong); border-radius:var(--radius);
-    box-shadow:var(--shadow); padding:14px 16px; pointer-events:none;
+    box-shadow:var(--shadow); pointer-events:none; overflow:hidden;
   }
+  .link-preview .lp-body{ padding:14px 16px; }
   .link-preview .lp-title{ font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:15px; margin-bottom:6px; }
   .link-preview .lp-extract{ font-family:'Newsreader',serif; font-size:13.5px; color:var(--bone-dim); line-height:1.5; }
-  .link-preview .lp-thumb{ float:right; width:56px; height:56px; object-fit:cover; border-radius:2px; margin:0 0 6px 10px; }
-  .link-preview .lp-loading{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--bone-dim); }
+  /* full-width banner instead of a small floated square — reads much
+     better and actually shows what the image is */
+  .link-preview .lp-thumb{ display:block; width:100%; height:150px; object-fit:cover; }
+  .link-preview .lp-loading{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--bone-dim); padding:14px 16px; }
   @media (hover: none){ .link-preview{ display:none !important; } }
   .suggest-panel{
     position:absolute; top:calc(100% + 6px); left:0; right:0;
@@ -219,7 +222,7 @@
 
   .layout{
     max-width:1180px; margin:0 auto; padding:44px 28px 120px;
-    display:grid; grid-template-columns:200px minmax(0,1fr) 300px; gap:44px; align-items:start;
+    display:grid; grid-template-columns:200px minmax(0,1fr) 330px; gap:44px; align-items:start;
   }
   .toc{ position:sticky; top:80px; font-family:'IBM Plex Mono',monospace; font-size:12px; }
   .toc .eyebrow{ display:block; margin-bottom:12px; }
@@ -362,9 +365,20 @@
     max-height: calc(100vh - 96px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    /* Firefox: thin scrollbar, theme-matched track/thumb colors */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
   }
-  .side-panel::-webkit-scrollbar{ width:6px; }
-  .side-panel::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:100px; }
+  /* Chrome/Safari/Edge: the ::-webkit-scrollbar family needs every part
+     styled explicitly, or you get the browser default back */
+  .side-panel::-webkit-scrollbar{ width:9px; }
+  .side-panel::-webkit-scrollbar-track{ background:transparent; }
+  .side-panel::-webkit-scrollbar-thumb{
+    background-color: var(--line-strong);
+    border-radius: 100px;
+    border: 2px solid var(--murk); /* shrinks the visible thumb off the edges */
+  }
+  .side-panel::-webkit-scrollbar-thumb:hover{ background-color: var(--bone-dim); }
   .side-panel .eyebrow{ display:block; margin-bottom:10px; }
   .side-panel .row{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
   .side-panel .row:last-child{ border-bottom:none; }
@@ -713,6 +727,15 @@
     holder.innerHTML = parse.text['*'];
 
     holder.querySelectorAll('script,style,.mw-editsection,.noprint,table.toc,#toc,.printfooter,.catlinks').forEach(el => el.remove());
+    // Wookieepedia specifically ships a second, smaller Canon/Legends
+    // indicator directly under the big blue/white switcher — same
+    // information, redundant once both actually render. Drop just that
+    // one (matched by its known badge filenames, so this is a no-op on
+    // any wiki that doesn't have it).
+    holder.querySelectorAll('img[alt="OnACanonArticle"], img[alt="OnALegendsArticle"], img[alt="GoToLegends"], img[alt="GoToCanon"]').forEach(img => {
+      const a = img.closest('a');
+      (a || img).remove();
+    });
     holder.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
       if(!href) return;
@@ -770,8 +793,6 @@
         <article id="article"></article>
         <aside class="side-panel">
           <span class="eyebrow">${esc(info.sitename)}</span>
-          <div class="row"><span>Articles</span><span>${info.articles != null ? esc(Number(info.articles).toLocaleString()) : '—'}</span></div>
-          <div class="row"><span>Language</span><span>${esc(info.lang || '')}</span></div>
           <div id="infoboxSlot"></div>
         </aside>
       </div>
@@ -915,7 +936,7 @@
       // the lead section's rendered HTML instead.
       const [introRes, imgRes] = await Promise.all([
         fetchJSON(api(sub, { action:'parse', page:title, prop:'text', section:0, redirects:1 })),
-        fetchJSON(api(sub, { action:'query', prop:'pageimages', piprop:'thumbnail', pithumbsize:160, redirects:1, titles:title }))
+        fetchJSON(api(sub, { action:'query', prop:'pageimages', piprop:'thumbnail', pithumbsize:340, redirects:1, titles:title }))
       ]);
       if(introRes.error){
         const result = { extract: '', thumb: null, missing: true };
@@ -945,7 +966,7 @@
     let top = r.bottom + 8;
     const maxLeft = window.innerWidth - 316;
     if(left > maxLeft) left = Math.max(16, maxLeft);
-    if(top + 160 > window.innerHeight) top = Math.max(16, r.top - 8 - 160);
+    if(top + 320 > window.innerHeight) top = Math.max(16, r.top - 8 - 320);
     linkPreview.style.left = left + 'px';
     linkPreview.style.top = top + 'px';
   }
@@ -971,13 +992,13 @@
         const data = await getPreview(sub, title);
         if(myToken !== hoverToken) return; // hovered elsewhere before this landed
         if(data.missing){
-          linkPreview.innerHTML = `<div class="lp-title">${esc(title)}</div><div class="lp-extract">No article found at this title.</div>`;
+          linkPreview.innerHTML = `<div class="lp-body"><div class="lp-title">${esc(title)}</div><div class="lp-extract">No article found at this title.</div></div>`;
         } else if(data.error){
           hideLinkPreview();
         } else {
           linkPreview.innerHTML =
             (data.thumb ? `<img class="lp-thumb" src="${esc(data.thumb)}" alt="">` : '') +
-            `<div class="lp-title">${esc(title)}</div><div class="lp-extract">${esc(data.extract || 'No preview available.')}</div>`;
+            `<div class="lp-body"><div class="lp-title">${esc(title)}</div><div class="lp-extract">${esc(data.extract || 'No preview available.')}</div></div>`;
         }
         positionPreview(a);
       }, 320);
