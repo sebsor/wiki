@@ -192,24 +192,80 @@
   #article .mw-editsection, #article .toc, #article .noprint{ display:none !important; }
   #article hr{ border:none; border-top:1px solid var(--line); margin:30px 0; }
 
-  /* infobox → sidebar-style card even where it renders inline */
-  #article .portable-infobox, #article .infobox{
+  /* infobox → sidebar-style card. Scoped to BOTH #article (inline infoboxes we
+     didn't pull out) and #infoboxSlot (the sidebar, where extracted ones land) —
+     these are two separate containers, so both need every rule. */
+  #article .portable-infobox, #infoboxSlot .portable-infobox,
+  #article .infobox, #infoboxSlot .infobox{
     background:var(--murk) !important; border:1px solid var(--line-strong) !important;
     border-radius:var(--radius); font-family:'Newsreader',serif; color:var(--bone) !important;
     float:none !important; width:100% !important; margin:0 0 30px !important; padding:0 !important;
   }
-  #article .pi-title, #article .infobox caption{
+  #article .pi-title, #infoboxSlot .pi-title,
+  #article .infobox caption, #infoboxSlot .infobox caption{
     font-family:'Bricolage Grotesque',sans-serif !important; font-weight:700 !important; font-size:20px !important;
     background:var(--murk-2) !important; color:var(--bone) !important; padding:14px 18px !important; margin:0 !important;
   }
-  #article .pi-data, #article .infobox tr{ border-top:1px solid var(--line) !important; }
-  #article .pi-data-label, #article .infobox th{
+  #article .pi-data, #infoboxSlot .pi-data,
+  #article .infobox tr, #infoboxSlot .infobox tr{ border-top:1px solid var(--line) !important; }
+  #article .pi-data-label, #infoboxSlot .pi-data-label,
+  #article .infobox th, #infoboxSlot .infobox th{
     font-family:'IBM Plex Mono',monospace !important; font-size:10.5px !important; text-transform:uppercase;
     letter-spacing:.03em; color:var(--bone-dim) !important; background:none !important;
   }
-  #article .pi-data-value, #article .infobox td{ color:var(--bone) !important; background:none !important; }
-  #article .pi-item, #article .infobox td, #article .infobox th{ padding:9px 18px !important; }
-  #article .pi-image img, #article .infobox img{ width:100%; }
+  #article .pi-data-value, #infoboxSlot .pi-data-value,
+  #article .infobox td, #infoboxSlot .infobox td{ color:var(--bone) !important; background:none !important; }
+  #article .pi-item, #infoboxSlot .pi-item,
+  #article .infobox td, #infoboxSlot .infobox td,
+  #article .infobox th, #infoboxSlot .infobox th{ padding:9px 18px !important; }
+  #article .pi-image img, #infoboxSlot .pi-image img,
+  #article .infobox img, #infoboxSlot .infobox img{ width:100%; }
+  #article .pi-caption, #infoboxSlot .pi-caption{
+    font-family:'IBM Plex Mono',monospace !important; font-size:10.5px !important; color:var(--bone-dim) !important;
+    padding:8px 18px 0 !important;
+  }
+
+  /* ---- Tabbers: image-collection tabs in infoboxes, and content tabbers in
+     article bodies. Fandom ships two markup generations; we support both. ---- */
+
+  /* new FandomDesktop skin ("wds-tabber") — used for both infobox image tabs
+     and general in-article tabbers */
+  .wds-tab__content{ display:none; }
+  .wds-tab__content.wds-is-current{ display:block; }
+  .wds-tabs__wrapper{ margin:0 0 10px; }
+  .wds-tabs{ list-style:none; display:flex; flex-wrap:wrap; gap:6px; margin:0; padding:14px 18px 0; }
+  .wds-tabs__tab{
+    cursor:pointer; user-select:none; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
+    letter-spacing:.04em; text-transform:uppercase; padding:6px 12px; border:1px solid var(--line-strong);
+    border-radius:100px; color:var(--bone-dim);
+  }
+  .wds-tabs__tab:hover{ color:var(--bone); border-color:var(--bone-dim); }
+  .wds-tabs__tab.wds-is-current{ background:var(--toxin); border-color:var(--toxin); color:var(--void); font-weight:600; }
+  .wds-tab__content .pi-image-caption, .wds-tab__content figcaption{ padding:0 18px 14px; }
+  .wds-tab__content img{ display:block; padding:0 18px; box-sizing:border-box; }
+
+  /* legacy portable-infobox tabs */
+  .pi-image-collection-tab-content{ display:none; }
+  .pi-image-collection-tab-content.current{ display:block; }
+  ul.pi-image-collection-tabs{
+    list-style:none; display:flex; flex-wrap:wrap; gap:6px; margin:0; padding:14px 18px 0;
+  }
+  ul.pi-image-collection-tabs li{
+    cursor:pointer; user-select:none; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
+    letter-spacing:.04em; text-transform:uppercase; padding:6px 12px; border:1px solid var(--line-strong);
+    border-radius:100px; color:var(--bone-dim);
+  }
+  ul.pi-image-collection-tabs li:hover{ color:var(--bone); border-color:var(--bone-dim); }
+  ul.pi-image-collection-tabs li.current{ background:var(--toxin); border-color:var(--toxin); color:var(--void); font-weight:600; }
+
+  /* legacy generic tabber (Tabber extension used directly in article bodies) */
+  .tabber:not(.wds-tabber) > .tabbernav{ list-style:none; display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; padding:0; }
+  .tabber:not(.wds-tabber) > .tabbernav li{
+    cursor:pointer; user-select:none; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.03em; padding:7px 14px; border:1px solid var(--line-strong); border-radius:100px; color:var(--bone-dim);
+  }
+  .tabber:not(.wds-tabber) > .tabbernav li:hover{ color:var(--bone); border-color:var(--bone-dim); }
+  .tabber:not(.wds-tabber) > .tabbernav li.tabberactive{ background:var(--toxin); border-color:var(--toxin); color:var(--void); font-weight:600; }
 
   .quote-strip{
     display:flex; gap:8px; flex-wrap:wrap; margin:0 0 30px;
@@ -555,6 +611,8 @@
     if(infoboxHTML){
       document.getElementById('infoboxSlot').innerHTML = infoboxHTML;
     }
+    normalizeTabbers(document.getElementById('article'));
+    normalizeTabbers(document.getElementById('infoboxSlot'));
 
     // intercept internal link clicks (hash already routes, but ensure SPA nav triggers re-render even if hash matches pattern change only)
     document.getElementById('article').addEventListener('click', (e) => {
@@ -566,6 +624,80 @@
 
     window.scrollTo(0,0);
   }
+
+  // Fandom's tab widgets (image-collection tabs on infoboxes, and general
+  // content tabbers) work by hiding all but one panel via JS that never runs
+  // here, since we strip <script> tags for safety. So: mark exactly one
+  // tab/panel pair "current" per tabber (defaulting to the first if the
+  // fetched HTML doesn't already flag one), and index every tab/panel pair
+  // so the delegated click handler below can find its match.
+  function normalizeTabbers(root){
+    root.querySelectorAll('.wds-tabber').forEach(tabber => {
+      const tabs = [...tabber.querySelectorAll('.wds-tabs__tab')].filter(t => t.closest('.wds-tabber') === tabber);
+      const panels = [...tabber.querySelectorAll(':scope > .wds-tab__content')];
+      tabs.forEach((t,i) => t.dataset.tabIndex = i);
+      panels.forEach((p,i) => p.dataset.tabIndex = i);
+      if(tabs.length && !tabs.some(t => t.classList.contains('wds-is-current'))) tabs[0].classList.add('wds-is-current');
+      if(panels.length && !panels.some(p => p.classList.contains('wds-is-current'))) panels[0].classList.add('wds-is-current');
+    });
+    root.querySelectorAll('.pi-image-collection').forEach(coll => {
+      const tabs = [...coll.querySelectorAll(':scope > .pi-image-collection-tabs > li, :scope > ul.pi-image-collection-tabs > li')];
+      const panels = [...coll.querySelectorAll(':scope > .pi-image-collection-tab-content')];
+      tabs.forEach((t,i) => t.dataset.tabIndex = i);
+      panels.forEach((p,i) => p.dataset.tabIndex = i);
+      if(tabs.length && !tabs.some(t => t.classList.contains('current'))) tabs[0].classList.add('current');
+      if(panels.length && !panels.some(p => p.classList.contains('current'))) panels[0].classList.add('current');
+    });
+    root.querySelectorAll('.tabber:not(.wds-tabber)').forEach(tabber => {
+      const tabs = [...tabber.querySelectorAll(':scope > .tabbernav > li')];
+      const panels = [...tabber.querySelectorAll(':scope > .tabbertab')];
+      tabs.forEach((t,i) => t.dataset.tabIndex = i);
+      panels.forEach((p,i) => { p.dataset.tabIndex = i; p.style.display = i === 0 ? '' : 'none'; });
+      if(tabs.length) tabs[0].classList.add('tabberactive');
+    });
+  }
+
+  // One delegated listener handles every tabber on the page, present or future
+  // (article re-renders replace #article's contents, but this listener lives
+  // on document and never needs to be re-attached).
+  document.addEventListener('click', (e) => {
+    const wdsTab = e.target.closest('.wds-tabs__tab');
+    if(wdsTab){
+      e.preventDefault();
+      const tabber = wdsTab.closest('.wds-tabber');
+      if(!tabber) return;
+      const idx = wdsTab.dataset.tabIndex;
+      tabber.querySelectorAll('.wds-tabs__tab').forEach(t => { if(t.closest('.wds-tabber') === tabber) t.classList.remove('wds-is-current'); });
+      tabber.querySelectorAll(':scope > .wds-tab__content').forEach(p => p.classList.remove('wds-is-current'));
+      wdsTab.classList.add('wds-is-current');
+      const panel = tabber.querySelector(`:scope > .wds-tab__content[data-tab-index="${idx}"]`);
+      if(panel) panel.classList.add('wds-is-current');
+      return;
+    }
+    const piTab = e.target.closest('.pi-image-collection-tabs li');
+    if(piTab){
+      e.preventDefault();
+      const coll = piTab.closest('.pi-image-collection');
+      if(!coll) return;
+      const idx = piTab.dataset.tabIndex;
+      coll.querySelectorAll('.pi-image-collection-tabs li').forEach(t => t.classList.remove('current'));
+      coll.querySelectorAll(':scope > .pi-image-collection-tab-content').forEach(p => p.classList.remove('current'));
+      piTab.classList.add('current');
+      const panel = coll.querySelector(`:scope > .pi-image-collection-tab-content[data-tab-index="${idx}"]`);
+      if(panel) panel.classList.add('current');
+      return;
+    }
+    const legacyTab = e.target.closest('.tabber:not(.wds-tabber) > .tabbernav > li');
+    if(legacyTab){
+      e.preventDefault();
+      const tabber = legacyTab.closest('.tabber');
+      if(!tabber) return;
+      const idx = legacyTab.dataset.tabIndex;
+      tabber.querySelectorAll(':scope > .tabbernav > li').forEach(t => t.classList.remove('tabberactive'));
+      legacyTab.classList.add('tabberactive');
+      tabber.querySelectorAll(':scope > .tabbertab').forEach(p => { p.style.display = (p.dataset.tabIndex === idx) ? '' : 'none'; });
+    }
+  });
 
   function stripTags(html){
     const d = document.createElement('div');
