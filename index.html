@@ -303,6 +303,15 @@
   #article sup.reference a{ border-bottom:none; color:var(--toxin); }
   #article .mw-editsection, #article .toc, #article .noprint{ display:none !important; }
   #article hr{ border:none; border-top:1px solid var(--line); margin:30px 0; }
+  /* Fandom decorates thumbnails and tabs with small icon SVGs (magnify,
+     info, etc.) sized by their own stylesheet, which we don't load. A
+     bare <svg><use> with no explicit width/height falls back to the
+     browser's default SVG box — large enough to look like a chunk of
+     dead space, and to swallow hover/click events meant for the image
+     or tab underneath it. None of these icons do anything without
+     Fandom's own JS (lightboxes, etc.) that we don't run, so hiding
+     them outright is both the fix and the right call either way. */
+  #article svg, #infoboxSlot svg{ display:none !important; }
 
   /* infobox → sidebar-style card. Scoped to BOTH #article (inline infoboxes we
      didn't pull out) and #infoboxSlot (the sidebar, where extracted ones land) —
